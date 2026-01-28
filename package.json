@@ -1,0 +1,21 @@
+{
+    "name": "@dre44/vfs",
+    "version": "0.0.1",
+    "description": "POSIX like virtual fs",
+    "type": "module",
+    "scripts": {
+        "tc": "tsc --noEmit",
+        "tc:watch": "tsc --noEmit --watch",
+        "prebuild": "rm -rf dist",
+        "build": "tsc"
+    },
+    "main": "./dist/index.js",
+    "keywords": [],
+    "author": "André Thomas",
+    "license": "ISC",
+    "dependencies": {
+        "@dre44/dyncache": "^0.1.2",
+        "@dre44/util": "^0.9.0",
+        "zod": "^4.3.5"
+    }
+}
