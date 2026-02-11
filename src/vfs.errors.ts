@@ -23,7 +23,7 @@ export class VFSNotFoundError extends VFSError {
 }
 
 export class VFSOperationNotSupportedError extends VFSError {
-    constructor(operation: string) {
+    constructor(readonly operation: string) {
         super(`Operation not supported: ${operation}`);
     }
 }

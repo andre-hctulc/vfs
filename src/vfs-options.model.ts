@@ -24,17 +24,22 @@ export type VFSBaseRemoveOptions = z.infer<typeof VFSBaseRemoveOptionsSchema>;
 
 // #### stat ####
 
-export const VFSStatOptionsSchema = VFSOperationOptionsSchema;
+export const VFSStatOptionsSchema = VFSOperationOptionsSchema.extend({});
 export type VFSStatOptions = z.infer<typeof VFSStatOptionsSchema>;
+
+// #### stats ####
+
+export const VFSStatsOptionsSchema = VFSStatOptionsSchema.extend({});
+export type VFSStatsOptions = z.infer<typeof VFSStatsOptionsSchema>;
 
 // #### getDir ####
 
-export const VFSGetDirOptionsSchema = VFSOperationOptionsSchema;
+export const VFSGetDirOptionsSchema = VFSOperationOptionsSchema.extend({});
 export type VFSGetDirOptions = z.infer<typeof VFSGetDirOptionsSchema>;
 
 // #### readFile ####
 
-export const VFSReadFileOptionsSchema = VFSOperationOptionsSchema;
+export const VFSReadFileOptionsSchema = VFSOperationOptionsSchema.extend({});
 export type VFSReadFileOptions = z.infer<typeof VFSReadFileOptionsSchema>;
 
 // #### readJSON ####
@@ -66,6 +71,7 @@ export type VFSReadOptions = z.infer<typeof VFSReadOptionsSchema>;
 export const VFSReaddirOptionsSchema = VFSOperationOptionsSchema.extend({
     check_is_dir: z.boolean().optional(),
     include_hidden: z.boolean().optional(),
+    recursive: z.boolean().optional(),
     query_options: VFSQueryOptionsSchema.optional(),
 });
 export type VFSReaddirOptions = z.infer<typeof VFSReaddirOptionsSchema>;
@@ -88,6 +94,11 @@ export const VFSWriteFileOptionsSchema = VFSOperationOptionsSchema.extend({
     encoding: z.string().optional(),
 });
 export type VFSWriteFileOptions = z.infer<typeof VFSWriteFileOptionsSchema>;
+
+// #### writeFiles ####
+
+export const VFSWriteFilesOptionsSchema = VFSWriteFileOptionsSchema.extend({});
+export type VFSWriteFilesOptions = z.infer<typeof VFSWriteFilesOptionsSchema>;
 
 // #### writeJSON ####
 
