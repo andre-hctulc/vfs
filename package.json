@@ -19,8 +19,8 @@
     "author": "André Thomas",
     "license": "ISC",
     "dependencies": {
-        "@dre44/dyncache": "^0.1.2",
-        "@dre44/util": "^0.9.0",
+        "@dre44/dyncache": "^0.2.3",
+        "@dre44/util": "^0.12.0",
         "zod": "^4.3.6"
     }
 }

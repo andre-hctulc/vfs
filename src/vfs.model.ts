@@ -16,3 +16,12 @@ export const VFSEntrySchema = z
 export type VFSEntry = z.infer<typeof VFSEntrySchema>;
 
 export type VFSEntryStream = AsyncGenerator<VFSEntry, void, unknown>;
+
+export const VFSContentSchema = z
+    .object({
+        content: z.base64().describe("Base64 encoded content of the file"),
+        mime_type: z.string().describe("The MIME type of the content"),
+        size: z.number().describe("The size of the content in bytes"),
+    })
+    .describe("VFS Content Payload");
+export type VFSContent = z.infer<typeof VFSContentSchema>;

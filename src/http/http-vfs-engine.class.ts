@@ -1,4 +1,4 @@
-import { base64ToFile, fileToBase64 } from "../util/vfs.util.js";
+import { deserializeFile, serializeFile } from "../util/vfs.util.js";
 import type { VFSEngine } from "../vfs-engine.interface.js";
 import type {
     VFSGlobOptions,
@@ -13,7 +13,7 @@ import type {
     VFSWriteFileOptions,
     VFSWriteFilesOptions,
 } from "../vfs-options.model.js";
-import { basename, errorCodeToError } from "../vfs-system.util.js";
+import { errorCodeToError } from "../vfs-system.util.js";
 import { VFSError } from "../vfs.errors.js";
 import type { VFSEntry, VFSEntryStream } from "../vfs.model.js";
 import {
@@ -21,19 +21,14 @@ import {
     StatResponseSchema,
     type ReaddirRequest,
     type ReaddirResponse,
-    type ReadFileRequest,
     type ReadFileResponse,
-    type StatRequest,
     type StatResponse,
     type GlobRequest,
     type StatsRequest,
     type StatsResponse,
-    type WriteFileRequest,
     type WriteFileResponse,
     type WriteFilesRequest,
     type RmResponse,
-    type RmRequest,
-    type RenameRequest,
     type RenameResponse,
     RenameResponseSchema,
     RmResponseSchema,
@@ -48,12 +43,11 @@ import {
     type WriteFilesResponse,
     ReadTextRepresentationResponseSchema,
     type ReadTextRepresentationResponse,
-    type ReadTextRepresentationRequest,
-    BaseResponseSchema,
-    type BaseResponse,
-    type MkdirRequest,
     MkdirResponseSchema,
     type MkdirResponse,
+    ErrorResponseSchema,
+    type ErrorResponse,
+    type VFSRequest,
 } from "./http-vfs.model.js";
 import type { ZodType } from "zod";
 
@@ -68,20 +62,26 @@ export interface VFSHttpEngineOptions {
      * @default 30000 (30 seconds)
      */
     timeout?: number;
+    /**
+     * Metadata added to each request
+     */
+    metadata?: Record<string, string>;
 }
 
 interface FetchOptions<T> {
     responseSchema: ZodType<T>;
-    body: string;
+    body: VFSRequest;
 }
 
 export class HttpVFSEngine implements VFSEngine {
     #options: VFSHttpEngineOptions;
     #endpoint: string | URL;
+    #reqMetadata: Record<string, string>;
 
     constructor(endpoint: string | URL, options: VFSHttpEngineOptions) {
         this.#options = options;
         this.#endpoint = endpoint;
+        this.#reqMetadata = options.metadata || {};
         if (typeof this.#options.timeout === "number" && this.#options.timeout < 0) {
             throw new Error("Timeout must be a positive integer");
         }
@@ -103,7 +103,7 @@ export class HttpVFSEngine implements VFSEngine {
                 ...this.#options.requestInit,
                 method: "POST",
                 headers,
-                body: options.body,
+                body: JSON.stringify(options.body),
                 signal: abortController.signal,
             });
         } catch (error) {
@@ -111,23 +111,25 @@ export class HttpVFSEngine implements VFSEngine {
                 throw new VFSError(`Request timeout after ${timeout}ms`);
             }
 
-            throw error;
+            throw new VFSError(`Network Error: ${(error as Error).message}`, {
+                cause: error,
+            });
         } finally {
             clearTimeout(to);
         }
 
         if (!response.ok) {
             let resText: string;
-            let res: BaseResponse | null = null;
+            let errRes: ErrorResponse | null = null;
             const isJSONResponse = response.headers.get("Content-Type")?.includes("application/json");
 
             if (isJSONResponse) {
                 try {
                     const errorData = await response.json();
-                    const { success, data } = BaseResponseSchema.loose().safeParse(errorData);
+                    const { success, data } = ErrorResponseSchema.loose().safeParse(errorData);
                     if (success) {
-                        res = data;
-                        resText = data.error?.message || "<no error message provided>";
+                        errRes = data;
+                        resText = data.error.message || "<no error message provided>";
                     } else {
                         resText = "<invalid error response format>";
                     }
@@ -142,21 +144,32 @@ export class HttpVFSEngine implements VFSEngine {
                 }
             }
 
-            if (res?.error?.code) {
-                const err = errorCodeToError(res.error.code, res.error.details);
+            if (errRes?.error?.code) {
+                const err = errorCodeToError(errRes.error.code, errRes.error.details);
                 if (err) {
                     throw err;
                 }
             }
 
-            throw new VFSError(`HTTP Error (${response.status}): ${resText}`);
+            throw new VFSError(`Response not ok (${response.status}): ${resText}`);
         }
 
         const responseData = await response.json();
+
+        // Check is error
+        const errRes = ErrorResponseSchema.safeParse(responseData);
+        if (errRes.success) {
+            const err = errorCodeToError(errRes.data.error.code, errRes.data.error.details);
+            if (err) {
+                throw err;
+            }
+            throw new VFSError(errRes.data.error.message, { details: errRes.data.error.details });
+        }
+
         return options.responseSchema.parse(responseData);
     }
 
-    async *#streamEntries<B extends StreamRequest, T extends EntriesResponse>(
+    async *#streamEntries<B extends VFSRequest & StreamRequest, T extends EntriesResponse>(
         body: B,
         responseSchema: ZodType<T>,
         chunkSize?: number,
@@ -169,12 +182,13 @@ export class HttpVFSEngine implements VFSEngine {
         while (true) {
             const result: EntriesResponse = await this.#fetchJson({
                 responseSchema,
-                body: JSON.stringify({
+                body: {
                     ...body,
                     offset: nextTokenMode ? undefined : currentOffset,
                     limit,
                     next_token: nextToken,
-                } satisfies StreamRequest),
+                    metadata: { ...this.#reqMetadata, ...body.metadata },
+                } satisfies B,
             });
 
             // Yield all entries from this batch
@@ -200,11 +214,11 @@ export class HttpVFSEngine implements VFSEngine {
     async stat(path: string, options: VFSStatOptions): Promise<VFSEntry | null> {
         const data = await this.#fetchJson<StatResponse>({
             responseSchema: StatResponseSchema,
-            body: JSON.stringify({
+            body: {
                 operation: "stat",
                 path,
                 options,
-            } satisfies StatRequest),
+            },
         });
         return data.entry;
     }
@@ -234,26 +248,23 @@ export class HttpVFSEngine implements VFSEngine {
     async readFile(path: string, options: VFSReadFileOptions): Promise<File> {
         const data = await this.#fetchJson<ReadFileResponse>({
             responseSchema: ReadFileResponseSchema,
-            body: JSON.stringify({
+            body: {
                 operation: "read_file",
                 path,
                 options,
-            } satisfies ReadFileRequest),
+            },
         });
-        return base64ToFile(data.file.content, {
-            type: data.file.mime_type,
-            name: basename(path),
-        });
+        return deserializeFile(data.file, path);
     }
 
     async readTextRepresentation(path: string, options: VFSReadTextRepresentationOptions): Promise<string> {
         const data = await this.#fetchJson<ReadTextRepresentationResponse>({
             responseSchema: ReadTextRepresentationResponseSchema,
-            body: JSON.stringify({
+            body: {
                 operation: "read_text_representation",
                 path,
                 options,
-            } satisfies ReadTextRepresentationRequest),
+            },
         });
         return data.text;
     }
@@ -272,12 +283,12 @@ export class HttpVFSEngine implements VFSEngine {
     async writeFile(path: string, file: File, options: VFSWriteFileOptions): Promise<VFSEntry> {
         const data = await this.#fetchJson<WriteFileResponse>({
             responseSchema: WriteFileResponseSchema,
-            body: JSON.stringify({
+            body: {
                 operation: "write_file",
                 path,
-                file: { content: await fileToBase64(file), mime_type: file.type, size: file.size },
+                file: await serializeFile(file),
                 options,
-            } satisfies WriteFileRequest),
+            },
         });
         return data.entry;
     }
@@ -287,12 +298,12 @@ export class HttpVFSEngine implements VFSEngine {
             {
                 operation: "write_files",
                 files: await Promise.all(
-                    files.map(async ({ path, file }) => ({
-                        path,
-                        content: await fileToBase64(file),
-                        mime_type: file.type,
-                        size: file.size,
-                    })),
+                    files.map(async ({ path, file }) => {
+                        return {
+                            path,
+                            ...(await serializeFile(file)),
+                        };
+                    }),
                 ),
                 options,
             },
@@ -303,23 +314,23 @@ export class HttpVFSEngine implements VFSEngine {
     async rm(path: string, options: VFSRmOptions): Promise<void> {
         await this.#fetchJson<RmResponse>({
             responseSchema: RmResponseSchema,
-            body: JSON.stringify({
+            body: {
                 operation: "rm",
                 path,
                 options,
-            } satisfies RmRequest),
+            },
         });
     }
 
     async rename(oldPath: string, newPath: string, options: VFSRenameOptions): Promise<VFSEntry> {
         const data = await this.#fetchJson<RenameResponse>({
             responseSchema: RenameResponseSchema,
-            body: JSON.stringify({
+            body: {
                 operation: "rename",
                 old_path: oldPath,
                 new_path: newPath,
                 options,
-            } as RenameRequest),
+            },
         });
         return data.entry;
     }
@@ -327,11 +338,11 @@ export class HttpVFSEngine implements VFSEngine {
     async mkdir(path: string, options?: VFSMkdirOptions): Promise<VFSEntry> {
         const data = await this.#fetchJson<MkdirResponse>({
             responseSchema: MkdirResponseSchema,
-            body: JSON.stringify({
+            body: {
                 operation: "mkdir",
                 path,
                 options,
-            } satisfies MkdirRequest),
+            },
         });
 
         return data.entry;

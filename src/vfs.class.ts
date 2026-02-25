@@ -100,10 +100,8 @@ export class VFS {
 
         this.#cache = new DynCache({
             maxSize: MAX_CACHE_SIZE_BYTES,
-            baseCacheOptions: {
-                ttl: HEAD_TTL_MS,
-                refresh: true,
-            },
+            ttl: HEAD_TTL_MS,
+            refresh: true,
             ...configuration?.cache?.head,
         });
 
