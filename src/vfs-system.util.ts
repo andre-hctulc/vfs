@@ -25,12 +25,12 @@ function snakeCase(code: string): string {
     return code.replace(/([A-Z])/g, "_$1").toLowerCase();
 }
 
-export function errorCodeToError(errorCode: string, details: any): Error | null {
+export function knownError(errorCode: string, details: any): Error | null {
     if (!errorCode) return null;
 
     const err_code = snakeCase(errorCode);
     const path = typeof details?.path === "string" ? details.path : undefined;
-    
+
     if (
         ["operation_not_supported", "unsupported_operation", "unsupported", "not_implemented"].includes(
             err_code,

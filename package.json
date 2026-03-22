@@ -20,7 +20,7 @@
     "license": "ISC",
     "dependencies": {
         "@dre44/dyncache": "^0.2.3",
-        "@dre44/util": "^0.12.0",
+        "@dre44/util": "^0.12.1",
         "zod": "^4.3.6"
     }
 }

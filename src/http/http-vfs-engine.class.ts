@@ -3,6 +3,7 @@ import type { VFSEngine } from "../vfs-engine.interface.js";
 import type {
     VFSGlobOptions,
     VFSMkdirOptions,
+    VFSQueryOptions,
     VFSReaddirOptions,
     VFSReadFileOptions,
     VFSReadTextRepresentationOptions,
@@ -13,7 +14,7 @@ import type {
     VFSWriteFileOptions,
     VFSWriteFilesOptions,
 } from "../vfs-options.model.js";
-import { errorCodeToError } from "../vfs-system.util.js";
+import { knownError } from "../vfs-system.util.js";
 import { VFSError } from "../vfs.errors.js";
 import type { VFSEntry, VFSEntryStream } from "../vfs.model.js";
 import {
@@ -108,10 +109,11 @@ export class HttpVFSEngine implements VFSEngine {
             });
         } catch (error) {
             if (error instanceof Error && error.name === "AbortError") {
-                throw new VFSError(`Request timeout after ${timeout}ms`);
+                throw new VFSError(`Request timeout after ${timeout}ms`, { code: "REQUEST_TIMEOUT" });
             }
 
             throw new VFSError(`Network Error: ${(error as Error).message}`, {
+                code: "NETWORK_ERROR",
                 cause: error,
             });
         } finally {
@@ -145,13 +147,16 @@ export class HttpVFSEngine implements VFSEngine {
             }
 
             if (errRes?.error?.code) {
-                const err = errorCodeToError(errRes.error.code, errRes.error.details);
+                const err = knownError(errRes.error.code, errRes.error.details);
                 if (err) {
                     throw err;
                 }
             }
 
-            throw new VFSError(`Response not ok (${response.status}): ${resText}`);
+            throw new VFSError(`Response not ok (${response.status}): ${resText}`, {
+                code: errRes?.error?.code,
+                details: {},
+            });
         }
 
         const responseData = await response.json();
@@ -159,11 +164,14 @@ export class HttpVFSEngine implements VFSEngine {
         // Check is error
         const errRes = ErrorResponseSchema.safeParse(responseData);
         if (errRes.success) {
-            const err = errorCodeToError(errRes.data.error.code, errRes.data.error.details);
+            const err = knownError(errRes.data.error.code, errRes.data.error.details);
             if (err) {
                 throw err;
             }
-            throw new VFSError(errRes.data.error.message, { details: errRes.data.error.details });
+            throw new VFSError(errRes.data.error.message, {
+                code: errRes.data.error.code,
+                details: errRes.data.error.details,
+            });
         }
 
         return options.responseSchema.parse(responseData);
@@ -172,12 +180,14 @@ export class HttpVFSEngine implements VFSEngine {
     async *#streamEntries<B extends VFSRequest & StreamRequest, T extends EntriesResponse>(
         body: B,
         responseSchema: ZodType<T>,
-        chunkSize?: number,
+        queryOptions: VFSQueryOptions,
     ): VFSEntryStream {
-        let currentOffset = 0;
-        const limit = chunkSize ?? 100;
-        let nextToken: string | undefined = undefined;
+        let currentOffset = queryOptions?.offset ?? 0;
+        const chunkSize = Math.min(queryOptions?.limit ?? 100, 100);
+        const limit = queryOptions?.limit ?? Infinity;
+        let nextToken: string | undefined = queryOptions?.next_token;
         let nextTokenMode = false;
+        let loadCount = 0;
 
         while (true) {
             const result: EntriesResponse = await this.#fetchJson({
@@ -185,7 +195,7 @@ export class HttpVFSEngine implements VFSEngine {
                 body: {
                     ...body,
                     offset: nextTokenMode ? undefined : currentOffset,
-                    limit,
+                    limit: chunkSize,
                     next_token: nextToken,
                     metadata: { ...this.#reqMetadata, ...body.metadata },
                 } satisfies B,
@@ -204,7 +214,12 @@ export class HttpVFSEngine implements VFSEngine {
                 }
             } else {
                 currentOffset += result.entries.length;
-                if (result.entries.length < limit || result.is_truncated === false) {
+                loadCount += result.entries.length;
+                if (
+                    loadCount >= limit ||
+                    result.entries.length < chunkSize ||
+                    result.is_truncated === false
+                ) {
                     break;
                 }
             }
@@ -231,6 +246,7 @@ export class HttpVFSEngine implements VFSEngine {
                 options,
             },
             StatsResponseSchema,
+            options.query_options || {},
         );
     }
 
@@ -242,6 +258,7 @@ export class HttpVFSEngine implements VFSEngine {
                 options,
             },
             GlobResponseSchema,
+            options.query_options || {},
         );
     }
 
@@ -277,6 +294,7 @@ export class HttpVFSEngine implements VFSEngine {
                 options,
             },
             ReaddirResponseSchema,
+            options.query_options || {},
         );
     }
 
@@ -308,6 +326,7 @@ export class HttpVFSEngine implements VFSEngine {
                 options,
             },
             WriteFilesResponseSchema,
+            {},
         );
     }
 

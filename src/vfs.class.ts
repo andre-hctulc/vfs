@@ -223,7 +223,7 @@ export class VFS {
         }
 
         const normalizedPaths = paths.map((p) => this.normalizePath(p));
-        const statsList = await this.#tryOperationOrFallback(
+        const statList = await this.#tryOperationOrFallback(
             "stats",
             () => {
                 return this.#engine.stats!(normalizedPaths, options || {});
@@ -233,7 +233,7 @@ export class VFS {
             },
         );
         const cacheOptions = options?.cache_options;
-        for await (const stats of statsList) {
+        for await (const stats of statList) {
             this.#cache.set({ np: stats.path, typ: "stat" }, stats, cacheOptions);
             yield stats;
         }

@@ -3,6 +3,7 @@ import { VFSContentSchema, VFSEntrySchema } from "../vfs.model.js";
 import {
     VFSGlobOptionsSchema,
     VFSMkdirOptionsSchema,
+    VFSQueryOptionsSchema,
     VFSReaddirOptionsSchema,
     VFSReadFileOptionsSchema,
     VFSReadTextRepresentationOptionsSchema,
@@ -25,11 +26,9 @@ export const BaseRequestSchema = z
     .describe("Base schema for all VFS HTTP requests");
 export type BaseRequest = z.infer<typeof BaseRequestSchema>;
 
-export const StreamRequestSchema = BaseRequestSchema.extend({
-    limit: z.number().optional().describe("Maximum number of items to return"),
-    offset: z.number().optional().describe("Number of items to skip from the start"),
-    next_token: z.string().optional().describe("Token for pagination continuation"),
-}).describe("Base schema for paginated VFS HTTP requests");
+export const StreamRequestSchema = BaseRequestSchema.extend(
+    VFSQueryOptionsSchema.pick({ limit: true, offset: true, next_token: true }).shape,
+).describe("Base schema for paginated VFS HTTP requests");
 export type StreamRequest = z.infer<typeof StreamRequestSchema>;
 
 export const BaseResponseSchema = z

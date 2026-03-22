@@ -18,6 +18,7 @@ export type VFSBaseRemoveOptions = z.infer<typeof VFSBaseRemoveOptionsSchema>;
 export const VFSQueryOptionsSchema = VFSOperationOptionsSchema.extend({
     limit: z.number().optional().describe("Maximum number of entries to return"),
     offset: z.number().optional().describe("Number of entries to skip for pagination"),
+    next_token: z.string().optional().describe("Token for fetching the next page of results"),
 }).describe("Query/Pagination options");
 export type VFSQueryOptions = z.infer<typeof VFSQueryOptionsSchema>;
 
