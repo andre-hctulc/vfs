@@ -34,11 +34,11 @@ export async function serializeFile(file: File): Promise<VFSContent> {
     const base64Content = await fileToBase64(file);
     return {
         content: base64Content,
-        mime_type: file.type,
+        mimeType: file.type,
         size: file.size,
     };
 }
 
 export function deserializeFile(content: VFSContent, path: string): File {
-    return base64ToFile(content.content, { name: basename(path), type: content.mime_type });
+    return base64ToFile(content.content, { name: basename(path), type: content.mimeType });
 }

@@ -4,10 +4,10 @@ export const VFSEntrySchema = z
     .object({
         path: z.string().describe("The full path of the entry"),
         type: z.enum(["file", "directory", "symlink", "other"]).describe("The type of the entry"),
-        mime_type: z.string().describe("The MIME type of the entry. For directories, it's 'inode/directory'"),
+        mimeType: z.string().describe("The MIME type of the entry. For directories, it's 'inode/directory'"),
         size: z.number().describe("The size of the entry in bytes"),
-        modified_at: z.iso.datetime().describe("The last modified date of the entry"),
-        additional_data: z
+        modifiedAt: z.iso.datetime().describe("The last modified date of the entry"),
+        additionalData: z
             .record(z.string(), z.any())
             .optional()
             .describe("Additional metadata associated with the entry"),
@@ -20,7 +20,7 @@ export type VFSEntryStream = AsyncGenerator<VFSEntry, void, unknown>;
 export const VFSContentSchema = z
     .object({
         content: z.base64().describe("Base64 encoded content of the file"),
-        mime_type: z.string().describe("The MIME type of the content"),
+        mimeType: z.string().describe("The MIME type of the content"),
         size: z.number().describe("The size of the content in bytes"),
     })
     .describe("VFS Content Payload");

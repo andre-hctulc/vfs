@@ -11,14 +11,14 @@ export const VFSOperationOptionsSchema = z.object({
 export type VFSOperationOptions = z.infer<typeof VFSOperationOptionsSchema>;
 
 export const VFSBaseRemoveOptionsSchema = VFSOperationOptionsSchema.extend({
-    ignore_if_not_exists: z.boolean().optional().describe("Don't throw error if the target doesn't exist"),
+    force: z.boolean().optional().describe("Don't throw error if the target doesn't exist"),
 }).describe("Base options for VFS removal operations");
 export type VFSBaseRemoveOptions = z.infer<typeof VFSBaseRemoveOptionsSchema>;
 
 export const VFSQueryOptionsSchema = VFSOperationOptionsSchema.extend({
     limit: z.number().optional().describe("Maximum number of entries to return"),
     offset: z.number().optional().describe("Number of entries to skip for pagination"),
-    next_token: z.string().optional().describe("Token for fetching the next page of results"),
+    nextToken: z.string().optional().describe("Token for fetching the next page of results"),
 }).describe("Query/Pagination options");
 export type VFSQueryOptions = z.infer<typeof VFSQueryOptionsSchema>;
 
@@ -32,7 +32,7 @@ export type VFSStatOptions = z.infer<typeof VFSStatOptionsSchema>;
 // #### stats ####
 
 export const VFSStatsOptionsSchema = VFSStatOptionsSchema.extend({
-    query_options: VFSQueryOptionsSchema.optional(),
+    queryOptions: VFSQueryOptionsSchema.optional(),
 }).describe("Options for getting multiple file statistics");
 export type VFSStatsOptions = z.infer<typeof VFSStatsOptionsSchema>;
 
@@ -53,14 +53,14 @@ export type VFSReadFileOptions = z.infer<typeof VFSReadFileOptionsSchema>;
 // #### readJSON ####
 
 export const VFSReadJSONOptionsSchema = VFSOperationOptionsSchema.extend({
-    skip_mime_check: z.boolean().optional().describe("Skip MIME type validation before parsing JSON"),
+    skipMimeCheck: z.boolean().optional().describe("Skip MIME type validation before parsing JSON"),
 }).describe("Options for reading and parsing JSON files");
 export type VFSReadJSONOptions = z.infer<typeof VFSReadJSONOptionsSchema>;
 
 // #### readText ####
 
 export const VFSReadTextOptionsSchema = VFSOperationOptionsSchema.extend({
-    skip_mime_check: z.boolean().optional().describe("Skip MIME type validation before reading as text"),
+    skipMimeCheck: z.boolean().optional().describe("Skip MIME type validation before reading as text"),
 }).describe("Options for reading files as text");
 export type VFSReadTextOptions = z.infer<typeof VFSReadTextOptionsSchema>;
 
@@ -81,32 +81,32 @@ export type VFSReadOptions = z.infer<typeof VFSReadOptionsSchema>;
 // #### readdir ####
 
 export const VFSReaddirOptionsSchema = VFSOperationOptionsSchema.extend({
-    check_is_dir: z.boolean().optional().describe("Verify the path is a directory before reading"),
-    include_hidden: z.boolean().optional().describe("Include hidden files and directories in results"),
+    checkIsDir: z.boolean().optional().describe("Verify the path is a directory before reading"),
+    includeHidden: z.boolean().optional().describe("Include hidden files and directories in results"),
     recursive: z.boolean().optional().describe("Read subdirectories recursively"),
-    query_options: VFSQueryOptionsSchema.optional(),
+    queryOptions: VFSQueryOptionsSchema.optional(),
 }).describe("Options for reading directory contents");
 export type VFSReaddirOptions = z.infer<typeof VFSReaddirOptionsSchema>;
 
 // #### glob ####
 
 export const VFSGlobOptionsSchema = VFSOperationOptionsSchema.extend({
-    ignore_patterns: z
+    ignorePatterns: z
         .string()
         .array()
         .optional()
         .describe("Array of glob patterns to ignore during matching"),
-    case_insensitive: z.boolean().optional().describe("Perform case-insensitive pattern matching"),
-    follow_symlinks: z.boolean().optional().describe("Follow symbolic links during glob matching"),
-    query_options: VFSQueryOptionsSchema.optional(),
+    caseInsensitive: z.boolean().optional().describe("Perform case-insensitive pattern matching"),
+    followSymlinks: z.boolean().optional().describe("Follow symbolic links during glob matching"),
+    queryOptions: VFSQueryOptionsSchema.optional(),
 }).describe("Options for glob pattern matching");
 export type VFSGlobOptions = z.infer<typeof VFSGlobOptionsSchema>;
 
 // #### writeFile ####
 
 export const VFSWriteFileOptionsSchema = VFSOperationOptionsSchema.extend({
-    no_overwrite: z.boolean().optional().describe("Prevent overwriting existing files"),
-    create_dirs: z.boolean().optional().describe("Create parent directories if they don't exist"),
+    noOverwrite: z.boolean().optional().describe("Prevent overwriting existing files"),
+    createDirs: z.boolean().optional().describe("Create parent directories if they don't exist"),
     encoding: z.string().optional().describe("Character encoding for the file content"),
 }).describe("Options for writing files");
 export type VFSWriteFileOptions = z.infer<typeof VFSWriteFileOptionsSchema>;

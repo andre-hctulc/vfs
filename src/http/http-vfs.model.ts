@@ -27,7 +27,7 @@ export const BaseRequestSchema = z
 export type BaseRequest = z.infer<typeof BaseRequestSchema>;
 
 export const StreamRequestSchema = BaseRequestSchema.extend(
-    VFSQueryOptionsSchema.pick({ limit: true, offset: true, next_token: true }).shape,
+    VFSQueryOptionsSchema.pick({ limit: true, offset: true, nextToken: true }).shape,
 ).describe("Base schema for paginated VFS HTTP requests");
 export type StreamRequest = z.infer<typeof StreamRequestSchema>;
 
@@ -53,11 +53,11 @@ export const ErrorResponseSchema = BaseResponseSchema.extend({
 export type ErrorResponse = z.infer<typeof ErrorResponseSchema>;
 
 export const StreamResponseSchema = BaseResponseSchema.extend({
-    is_truncated: z
+    isTruncated: z
         .boolean()
         .optional()
         .describe("Whether the response has been truncated due to size limits"),
-    next_token: z.string().optional().describe("Token to fetch the next page of results"),
+    nextToken: z.string().optional().describe("Token to fetch the next page of results"),
 }).describe("Base schema for paginated VFS HTTP responses");
 export type StreamResponse = z.infer<typeof StreamResponseSchema>;
 
@@ -73,6 +73,7 @@ export const ReaddirRequestSchema = StreamRequestSchema.extend({
 export type ReaddirRequest = z.infer<typeof ReaddirRequestSchema>;
 
 export const ReaddirResponseSchema = StreamResponseSchema.extend({
+    operation: z.literal("read_dir").describe("Operation type identifier"),
     entries: VFSEntrySchema.array().describe("Array of directory entries"),
 }).describe("Response schema for directory listing operations");
 export type ReaddirResponse = z.infer<typeof ReaddirResponseSchema>;
@@ -119,6 +120,7 @@ export const StatRequestSchema = BaseRequestSchema.extend({
 export type StatRequest = z.infer<typeof StatRequestSchema>;
 
 export const StatResponseSchema = BaseResponseSchema.extend({
+    operation: z.literal("stat").describe("Operation type identifier"),
     entry: VFSEntrySchema.describe("File or directory entry"),
 }).describe("Response schema for stat operations");
 export type StatResponse = z.infer<typeof StatResponseSchema>;
@@ -200,8 +202,8 @@ export type RmResponse = z.infer<typeof RmResponseSchema>;
 
 export const RenameRequestSchema = BaseRequestSchema.extend({
     operation: z.literal("rename").describe("Operation type identifier"),
-    old_path: z.string().describe("Current path of the file/directory to rename"),
-    new_path: z.string().describe("New path for the file/directory"),
+    oldPath: z.string().describe("Current path of the file/directory to rename"),
+    newPath: z.string().describe("New path for the file/directory"),
     options: VFSRenameOptionsSchema.optional(),
 }).describe("Request schema for renaming/moving files or directories");
 export type RenameRequest = z.infer<typeof RenameRequestSchema>;
@@ -245,7 +247,7 @@ export const VFSRequestSchema = z
 export type VFSRequest = z.infer<typeof VFSRequestSchema>;
 
 export const VFSResponseSchema = z
-    .discriminatedUnion("operation", [
+    .union([
         ReaddirResponseSchema,
         ReadFileResponseSchema,
         StatResponseSchema,

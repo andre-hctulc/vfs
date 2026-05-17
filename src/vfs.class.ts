@@ -299,7 +299,7 @@ export class VFS {
         options?: VFSReadJSONOptions & SystemOptions & { schema?: ValueParser<T> | ValueValidator<T> },
     ): Promise<T> {
         const file = await this.readFile(path, options);
-        if (!options?.skip_mime_check && !JSON_MIME_TYPES.includes(file.type)) {
+        if (!options?.skipMimeCheck && !JSON_MIME_TYPES.includes(file.type)) {
             throw new VFSInvalidPathError(
                 `File at path ${path} is not a JSON file (mime type: ${file.type})`,
             );
@@ -350,7 +350,7 @@ export class VFS {
     async readText(path: string, options?: VFSReadTextOptions & SystemOptions): Promise<string> {
         const file = await this.readFile(path, options);
         if (
-            !options?.skip_mime_check &&
+            !options?.skipMimeCheck &&
             !(file.type.startsWith("text/") || EXOTIC_TEXT_MIME_TYPES.includes(file.type))
         ) {
             throw new VFSInvalidPathError(
@@ -425,7 +425,7 @@ export class VFS {
         const np = this.normalizePath(path);
         const recursive = !!options?.recursive;
 
-        if (options?.check_is_dir) {
+        if (options?.checkIsDir) {
             const item = await this.#statOrNull(np, options || {});
             if (!item) {
                 throw new VFSNotFoundError(path);
@@ -489,7 +489,7 @@ export class VFS {
 
         const item = await this.#statOrNull(np, options || {});
         if (!item) {
-            if (options?.ignore_if_not_exists) {
+            if (options?.force) {
                 return;
             }
             throw new VFSNotFoundError(path);
@@ -512,7 +512,7 @@ export class VFS {
 
         const item = await this.#statOrNull(np, options || {});
         if (!item) {
-            if (options?.ignore_if_not_exists) {
+            if (options?.force) {
                 return;
             }
             throw new VFSNotFoundError(path);

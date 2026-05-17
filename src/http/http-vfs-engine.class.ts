@@ -185,7 +185,7 @@ export class HttpVFSEngine implements VFSEngine {
         let currentOffset = queryOptions?.offset ?? 0;
         const chunkSize = Math.min(queryOptions?.limit ?? 100, 100);
         const limit = queryOptions?.limit ?? Infinity;
-        let nextToken: string | undefined = queryOptions?.next_token;
+        let nextToken: string | undefined = queryOptions?.nextToken;
         let nextTokenMode = false;
         let loadCount = 0;
 
@@ -196,7 +196,7 @@ export class HttpVFSEngine implements VFSEngine {
                     ...body,
                     offset: nextTokenMode ? undefined : currentOffset,
                     limit: chunkSize,
-                    next_token: nextToken,
+                    nextToken: nextToken,
                     metadata: { ...this.#reqMetadata, ...body.metadata },
                 } satisfies B,
             });
@@ -206,20 +206,16 @@ export class HttpVFSEngine implements VFSEngine {
                 yield entry;
             }
 
-            if (result.next_token || nextTokenMode) {
+            if (result.nextToken || nextTokenMode) {
                 nextTokenMode = true;
-                nextToken = result.next_token;
+                nextToken = result.nextToken;
                 if (!nextToken) {
                     break;
                 }
             } else {
                 currentOffset += result.entries.length;
                 loadCount += result.entries.length;
-                if (
-                    loadCount >= limit ||
-                    result.entries.length < chunkSize ||
-                    result.is_truncated === false
-                ) {
+                if (loadCount >= limit || result.entries.length < chunkSize || result.isTruncated === false) {
                     break;
                 }
             }
@@ -246,7 +242,7 @@ export class HttpVFSEngine implements VFSEngine {
                 options,
             },
             StatsResponseSchema,
-            options.query_options || {},
+            options.queryOptions || {},
         );
     }
 
@@ -258,7 +254,7 @@ export class HttpVFSEngine implements VFSEngine {
                 options,
             },
             GlobResponseSchema,
-            options.query_options || {},
+            options.queryOptions || {},
         );
     }
 
@@ -294,7 +290,7 @@ export class HttpVFSEngine implements VFSEngine {
                 options,
             },
             ReaddirResponseSchema,
-            options.query_options || {},
+            options.queryOptions || {},
         );
     }
 
@@ -346,8 +342,8 @@ export class HttpVFSEngine implements VFSEngine {
             responseSchema: RenameResponseSchema,
             body: {
                 operation: "rename",
-                old_path: oldPath,
-                new_path: newPath,
+                oldPath: oldPath,
+                newPath: newPath,
                 options,
             },
         });
